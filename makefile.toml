@@ -148,7 +148,7 @@ end
     cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
     description = "Bump release version"
     script = '''
-!include_files ./makefile.ds
+!include_files build-tools/makefile.ds
 
 reply = ask_user "Do you want to bump release version patch?"
 reply = lowercase ${reply}
@@ -197,7 +197,7 @@ end
     dependencies = ["pre-release"]
     description = "Publish on crates.io"
     script = '''
-!include_files makefile.ds
+!include_files build-tools/makefile.ds
 
 reply = ask_user "Do you want to publish the crates?"
 reply = lowercase ${reply}
