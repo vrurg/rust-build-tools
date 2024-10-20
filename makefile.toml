@@ -20,6 +20,7 @@
 [tasks.test]
     category = "Test"
     clear = true
+    cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
     description = "Extensive testing"
     script = '''
 test_tasks = array %{__MAKE_TEST_TASKS__}
@@ -110,6 +111,7 @@ exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}
 
 [tasks.is-clean]
     category = "Check"
+    cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
     description = "Repository is clean"
     script = '''
 is_clean = exec git diff-index --exit-code --stat HEAD
@@ -137,11 +139,13 @@ if is_path_exists ${__PREV_RELEASE_TESTING__}
     end
 end
 ''']
+    cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
     run_task = "test-versions"
     script_runner = "@duckscript"
 
 [tasks.version-patch-bump]
     clear = true
+    cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
     description = "Bump release version"
     script = '''
 !include_files ./makefile.ds
@@ -164,6 +168,7 @@ end
     script_runner = "@duckscript"
 
 [tasks.post-docs]
+    cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
     description = "Post-doc commit"
     script = '''
 exec --fail-on-error git add README.md CHANGELOG.md
@@ -188,6 +193,7 @@ end
 
 [tasks.publish]
     clear = true
+    cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
     dependencies = ["pre-release"]
     description = "Publish on crates.io"
     script = '''
