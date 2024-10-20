@@ -1,0 +1,198 @@
+[env]
+    __MAKE_CHANGELOG__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/CHANGELOG.md", condition = { env_not_set = [
+        "__MAKE_CHANGELOG__",
+    ] } }
+    __MAKE_README_TPL__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/build-tools/README.tpl", condition = { env_not_set = [
+        "__MAKE_README_TPL__",
+    ] } }
+    __MAKE_README__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/README.md", condition = { env_not_set = [
+        "__MAKE_README__",
+    ] } }
+    __PREV_RELEASE_TESTING__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/.release-tested", condition = { env_not_set = [
+        "__PREV_RELEASE_TESTING__",
+    ] } }
+    __RELEASE_TOML__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/build-tools/release.toml", condition = { env_not_set = [
+        "__RELEASE_TOML__",
+    ] } }
+
+[tasks.test]
+    category = "Test"
+    clear = true
+    description = "Extensive testing"
+    script = '''
+test_tasks = array %{__MAKE_TEST_TASKS__}
+
+for task in ${test_tasks}
+    cm_run_task ${task}
+end
+'''
+    script_runner = "@duckscript"
+
+[tasks.test-versions]
+    description = "Testing supported Rust versions"
+    script = '''
+toolchain_list = array %{__MAKE_TOOLCHAINS__}
+
+for toolchain in ${toolchain_list}
+    echo "Testing toolchain '${toolchain}'"
+    set_env __MAKE_DEFAULT_TOOLCHAIN__ ${toolchain}
+    rm Cargo.lock
+    cm_run_task ${__MAKE_TEST_TASK__}
+end
+
+# When successfully done then record last commit
+commit = exec git describe HEAD
+writefile ${__PREV_RELEASE_TESTING__} ${commit.stdout}
+'''
+    script_runner = "@duckscript"
+
+[tasks.test-default]
+    args        = ["test", "--workspace"]
+    category    = "Test"
+    command     = "cargo"
+    description = "Test with only the default features"
+    toolchain   = "${__MAKE_DEFAULT_TOOLCHAIN__}"
+
+[tasks.depends]
+    description = "Install necessary dependencies and tools"
+    script = '''
+echo "Installing dependencies"
+exec cargo install cargo-readme
+exec cargo install git-cliff
+exec cargo install cargo-get
+'''
+    script_runner = "@duckscript"
+
+[tasks.readme]
+    clear = true
+    cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+    description = "Build documentation"
+    script = '''
+!include_files build-tools/makefile.ds
+require_vars "__MAKE_README__ __MAKE_README_TPL__ __MAKE_README_CRATE_ROOT__"
+readme_content = exec --fail-on-error cargo readme -r ${__MAKE_README_CRATE_ROOT__} --template ${__MAKE_README_TPL__}
+writefile ${__MAKE_README__} ${readme_content.stdout}
+'''
+    script_runner = "@duckscript"
+
+[tasks.changelog]
+    clear = true
+    cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+    description = "Produce CHANGELOG.md"
+    script = """
+!include_files build-tools/makefile.ds
+require_vars "__MAKE_CHANGELOG__ __MAKE_README_CRATE_ROOT__"
+version_out = exec --fail-on-error cargo get package.version --entry ${__MAKE_README_CRATE_ROOT__} --pretty
+version = trim ${version_out.stdout}
+if is_empty ${version}
+    stderr = set ""
+    if not is_empty ${version_out.stderr}
+        stderr = set "\\n${version_out.stderr}"
+    end
+    assert_error "Can't find out ${__MAKE_README_CRATE_ROOT__} version.${stderr}"
+end
+echo "git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}"
+exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}
+"""
+    script_runner = "@duckscript"
+
+[tasks.docs]
+    script = '''#!@duckscript
+rel_version = set ${CARGO_RELEASE_VERSION}
+if is_empty ${rel_version}
+    # Not running under supervision of 'cargo release'
+    exec --fail-on-error cargo release --config ${__RELEASE_TOML__} release hook
+else
+end
+'''
+
+[tasks.is-clean]
+    category = "Check"
+    description = "Repository is clean"
+    script = '''
+is_clean = exec git diff-index --exit-code --stat HEAD
+if not eq ${is_clean.code} 0
+    print -bgc red -c yellow "!!!"
+    println -c bright_red " Repository is not clean."
+    echo ${is_clean.stdout}
+    exit 1
+end
+'''
+    script_runner = "@duckscript"
+
+[tasks.release-testing]
+    clear = true
+    condition = { fail_message = "No release testing is needed, has been done for this commit already" }
+    condition_script = ['''
+if is_path_exists ${__PREV_RELEASE_TESTING__}
+    prev = readfile ${__PREV_RELEASE_TESTING__}
+    prev = trim ${prev}
+    out = exec git describe HEAD
+    now = trim ${out.stdout}
+    if eq ${prev} ${now}
+        exit 1
+    end
+end
+''']
+    run_task = "test-versions"
+    script_runner = "@duckscript"
+
+[tasks.version-patch-bump]
+    clear = true
+    description = "Bump release version"
+    script = '''
+!include_files ./makefile.ds
+reply = ask_user "Do you want to bump release version patch?"
+reply = lowercase ${reply}
+if eq ${reply} "y"
+    exec --fail-on-error cargo release version patch
+    reply = ask_user "Does this look good for you?"
+    reply = lowercase ${reply}
+    if eq ${reply} "y"
+        echo "Bumping the patch."
+        exec --fail-on-error cargo release --config ${__RELEASE_TOML__} version patch --execute --no-confirm
+        exec --fail-on-error git add Cargo.toml fieldx/Cargo.toml fieldx_aux/Cargo.toml fieldx_derive/Cargo.toml fieldx_derive_support/Cargo.toml
+        exec --fail-on-error git commit -m "minor: version bump"
+    end
+end
+'''
+    script_runner = "@duckscript"
+
+[tasks.post-docs]
+    description = "Post-doc commit"
+    script = '''
+exec --fail-on-error git add README.md CHANGELOG.md
+diffed = exec git diff-index --exit-code --cached HEAD
+if not eq ${diffed.code} 0
+    echo "Docs need committing."
+    exec --fail-on-error git commit -m "minor: Pre-release docs update"
+    exec --fail-on-error git push
+end
+'''
+    script_runner = "@duckscript"
+
+[tasks.beta]
+    args        = ["--config", "${__RELEASE_TOML__}", "release", "version", "beta", "--execute"]
+    command     = "cargo"
+    description = "Produce beta version"
+
+[tasks.pre-release]
+    clear        = true
+    dependencies = ["is-clean", "release-testing", "version-patch-bump", "docs", "post-docs"]
+    description  = "Pre-release tasks"
+
+[tasks.publish]
+    clear = true
+    dependencies = ["pre-release"]
+    description = "Publish on crates.io"
+    script = '''
+!include_files makefile.ds
+reply = ask_user "Do you want to publish the crates?"
+reply = lowercase ${reply}
+if eq ${reply} "y"
+    exec --fail-on-error cargo release -x --no-confirm
+else
+    echo "Won't publish."
+end
+'''
+    script_runner = "@duckscript"

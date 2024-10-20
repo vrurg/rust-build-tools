@@ -1,0 +1,26 @@
+fn <scope> ask_user
+    question = set ${1}
+    print -bgc red -c black " ► "
+    print -bgc black -c white " ${question} "
+    print -s bold "(y/N)"
+    echo " "
+    reply = read
+    return ${reply}
+end
+
+fn <scope> require_vars
+    vars = array %{1}
+    missing = set false
+    for v in ${vars}
+        env_val = get_env ${v}
+        if is_empty ${env_val}
+            print -c bright_red "***ERROR***"
+            println " Missing ${v} variable."
+            missing = set true
+        end
+    end
+
+    if ${missing}
+        assert_fail "Consider adding missing variables in the main [env] section."
+    end
+end
