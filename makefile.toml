@@ -2,12 +2,14 @@
     __MAKE_CHANGELOG__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/CHANGELOG.md", condition = { env_not_set = [
         "__MAKE_CHANGELOG__",
     ] } }
+    __MAKE_DEFAULT_TOOLCHAIN__ = { value = "nightly", condition = { env_not_set = ["__MAKE_DEFAULT_TOOLCHAIN__"] } }
     __MAKE_README_TPL__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/build-tools/README.tpl", condition = { env_not_set = [
         "__MAKE_README_TPL__",
     ] } }
     __MAKE_README__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/README.md", condition = { env_not_set = [
         "__MAKE_README__",
     ] } }
+    __MAKE_TEST_TASK__ = { value = "test", condition = { env_not_set = ["__MAKE_TASK__"] } }
     __PREV_RELEASE_TESTING__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/.release-tested", condition = { env_not_set = [
         "__PREV_RELEASE_TESTING__",
     ] } }
@@ -29,8 +31,12 @@ end
     script_runner = "@duckscript"
 
 [tasks.test-versions]
+    cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
     description = "Testing supported Rust versions"
     script = '''
+!include build-tools/makefile.ds
+reuiqre_vars "__MAKE_TOOLCHAINS__ __MAKE_TEST_TASK__"
+
 toolchain_list = array %{__MAKE_TOOLCHAINS__}
 
 for toolchain in ${toolchain_list}
@@ -70,6 +76,7 @@ exec cargo install cargo-get
     script = '''
 !include_files build-tools/makefile.ds
 require_vars "__MAKE_README__ __MAKE_README_TPL__ __MAKE_README_CRATE_ROOT__"
+
 readme_content = exec --fail-on-error cargo readme -r ${__MAKE_README_CRATE_ROOT__} --template ${__MAKE_README_TPL__}
 writefile ${__MAKE_README__} ${readme_content.stdout}
 '''
@@ -82,6 +89,7 @@ writefile ${__MAKE_README__} ${readme_content.stdout}
     script = """
 !include_files build-tools/makefile.ds
 require_vars "__MAKE_CHANGELOG__ __MAKE_README_CRATE_ROOT__"
+
 version_out = exec --fail-on-error cargo get package.version --entry ${__MAKE_README_CRATE_ROOT__} --pretty
 version = trim ${version_out.stdout}
 if is_empty ${version}
@@ -97,20 +105,15 @@ exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}
     script_runner = "@duckscript"
 
 [tasks.docs]
-    script = '''#!@duckscript
-rel_version = set ${CARGO_RELEASE_VERSION}
-if is_empty ${rel_version}
-    # Not running under supervision of 'cargo release'
-    exec --fail-on-error cargo release --config ${__RELEASE_TOML__} release hook
-else
-end
-'''
+    dependencies = ["readme", "changelog"]
+    description  = "Building required docs."
 
 [tasks.is-clean]
     category = "Check"
     description = "Repository is clean"
     script = '''
 is_clean = exec git diff-index --exit-code --stat HEAD
+
 if not eq ${is_clean.code} 0
     print -bgc red -c yellow "!!!"
     println -c bright_red " Repository is not clean."
@@ -142,8 +145,10 @@ end
     description = "Bump release version"
     script = '''
 !include_files ./makefile.ds
+
 reply = ask_user "Do you want to bump release version patch?"
 reply = lowercase ${reply}
+
 if eq ${reply} "y"
     exec --fail-on-error cargo release version patch
     reply = ask_user "Does this look good for you?"
@@ -187,8 +192,10 @@ end
     description = "Publish on crates.io"
     script = '''
 !include_files makefile.ds
+
 reply = ask_user "Do you want to publish the crates?"
 reply = lowercase ${reply}
+
 if eq ${reply} "y"
     exec --fail-on-error cargo release -x --no-confirm
 else
