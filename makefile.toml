@@ -34,8 +34,8 @@ end
     cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
     description = "Testing supported Rust versions"
     script = '''
-!include build-tools/makefile.ds
-reuiqre_vars "__MAKE_TOOLCHAINS__ __MAKE_TEST_TASK__"
+!include_files build-tools/makefile.ds
+require_vars "__MAKE_TOOLCHAINS__ __MAKE_TEST_TASK__"
 
 toolchain_list = array %{__MAKE_TOOLCHAINS__}
 
