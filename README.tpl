@@ -1,6 +1,6 @@
-[![Rust](https://github.com/vrurg/fieldx/actions/workflows/fieldx.yml/badge.svg)](https://github.com/vrurg/fieldx/actions/workflows/fieldx.yml)
-![License](https://img.shields.io/github/license/vrurg/fieldx)
-![Crates.io Version](https://img.shields.io/crates/v/fieldx)
+{{badges}}
+[![License](https://img.shields.io/github/license/vrurg/{{crate}})](https://github.com/vrurg/{{crate}}/blob/main/LICENSE)
+[![Crates.io Version](https://img.shields.io/crates/v/{{crate}})](https://crates.io/crates/{{crate}})
 
 # {{crate}} v{{version}}
 
