@@ -49,7 +49,7 @@ for toolchain in ${toolchain_list}
     cm_run_task ${__MAKE_TEST_TASK__}
 end
 
-# When successfully done then record last commit
+# When successfully done then record the last commit
 commit = exec git describe HEAD
 writefile ${__PREV_RELEASE_TESTING__} ${commit.stdout}
 '''
@@ -111,10 +111,6 @@ echo "git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}"
 exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}
 """
     script_runner = "@duckscript"
-
-[tasks.docs]
-    dependencies = ["readme", "changelog"]
-    description  = "Building required docs."
 
 [tasks.is-clean]
     category = "Check"
@@ -195,7 +191,7 @@ end
 
 [tasks.pre-release]
     clear        = true
-    dependencies = ["is-clean", "release-testing", "version-patch-bump", "docs", "post-docs"]
+    dependencies = ["is-clean", "release-testing", "version-patch-bump", "readme", "changelog", "post-docs"]
     description  = "Pre-release tasks"
 
 [tasks.publish]
@@ -210,7 +206,11 @@ reply = ask_user "Do you want to publish the crates?"
 reply = lowercase ${reply}
 
 if eq ${reply} "y"
-    exec --fail-on-error cargo release --config ${__RELEASE_TOML__} -x --no-confirm
+    if ${DRY_RUN}
+        exec --fail-on-error cargo release --config ${__RELEASE_TOML__} --no-confirm
+    else
+        exec --fail-on-error cargo release --config ${__RELEASE_TOML__} -x --no-confirm
+    end
 else
     echo "Won't publish."
 end
