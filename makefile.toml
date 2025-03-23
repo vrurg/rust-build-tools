@@ -38,6 +38,8 @@ end
 !include_files build-tools/makefile.ds
 require_vars "__MAKE_TOOLCHAINS__ __MAKE_TEST_TASK__"
 
+set_env RUSTFLAGS "-D warnings"
+
 toolchain_list = array %{__MAKE_TOOLCHAINS__}
 
 for toolchain in ${toolchain_list}
