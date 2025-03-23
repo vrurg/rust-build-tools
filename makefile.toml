@@ -72,6 +72,11 @@ exec cargo install cargo-get
 '''
     script_runner = "@duckscript"
 
+[tasks.docs]
+    args        = ["doc", "--workspace", "--all-features", "--no-deps"]
+    command     = "cargo"
+    description = "Generate documentation"
+
 [tasks.readme]
     clear = true
     cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
