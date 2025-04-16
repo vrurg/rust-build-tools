@@ -9,7 +9,8 @@
     __MAKE_README__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/README.md", condition = { env_not_set = [
         "__MAKE_README__",
     ] } }
-    __MAKE_TEST_TASK__ = { value = "test", condition = { env_not_set = ["__MAKE_TASK__"] } }
+    __MAKE_TEST_VERSION_TASK__ = { value = "test", condition = { env_not_set = ["__MAKE_TEST_VERSION_TASK__"] } }
+    __MAKE_TEST_TASKS__ = { value = "test-default", condition = { env_not_set = ["__MAKE_TEST_TASKS__"] } }
     __PREV_RELEASE_TESTING__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/.release-tested", condition = { env_not_set = [
         "__PREV_RELEASE_TESTING__",
     ] } }
@@ -33,10 +34,11 @@ end
 
 [tasks.test-versions]
     cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+    condition = { env_set = [ "__MAKE_TEST_VERSION_TASK__" ] }
     description = "Testing supported Rust versions"
     script = '''
 !include_files build-tools/makefile.ds
-require_vars "__MAKE_TOOLCHAINS__ __MAKE_TEST_TASK__"
+require_vars "__MAKE_TOOLCHAINS__ __MAKE_TEST_VERSION_TASK__"
 
 set_env RUSTFLAGS "-D warnings"
 
@@ -46,7 +48,7 @@ for toolchain in ${toolchain_list}
     echo "Testing toolchain '${toolchain}'"
     set_env __MAKE_DEFAULT_TOOLCHAIN__ ${toolchain}
     rm Cargo.lock
-    cm_run_task ${__MAKE_TEST_TASK__}
+    cm_run_task ${__MAKE_TEST_VERSION_TASK__}
 end
 
 # When successfully done then record the last commit
@@ -60,6 +62,32 @@ writefile ${__PREV_RELEASE_TESTING__} ${commit.stdout}
     category    = "Test"
     command     = "cargo"
     description = "Test with only the default features"
+    toolchain   = "${__MAKE_DEFAULT_TOOLCHAIN__}"
+
+[tasks.test-combinations]
+    category = "Test"
+	condition = { env_set = [ "__MAKE_TEST_FEATURES__" ] }
+    description = "Test all possible combinations of features"
+    script = '''
+!include_files build-tools/makefile.ds
+
+feature_sets = generate_power_set ${__MAKE_TEST_FEATURES__}
+
+for fs in ${feature_sets}
+    fs = array_join ${fs} ","
+    echo "Testing feature set '${fs}'"
+    set_env __MAKE_FEATURE_SET__ ${fs}
+    cm_run_task test-features
+end
+'''
+    script_runner = "@duckscript"
+    toolchain = "${__MAKE_DEFAULT_TOOLCHAIN__}"
+
+[tasks.test-features]
+    args        = ["test", "--features", "${__MAKE_FEATURE_SET__}"]
+    category    = "Test"
+    command     = "cargo"
+    description = "Test with '${__MAKE_FEATURE_SET__}' features"
     toolchain   = "${__MAKE_DEFAULT_TOOLCHAIN__}"
 
 [tasks.depends]
