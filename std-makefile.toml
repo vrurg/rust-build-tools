@@ -9,8 +9,8 @@
     __MAKE_README__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/README.md", condition = { env_not_set = [
         "__MAKE_README__",
     ] } }
-    __MAKE_TEST_VERSION_TASK__ = { value = "test", condition = { env_not_set = ["__MAKE_TEST_VERSION_TASK__"] } }
     __MAKE_TEST_TASKS__ = { value = "test-default", condition = { env_not_set = ["__MAKE_TEST_TASKS__"] } }
+    __MAKE_TEST_VERSION_TASK__ = { value = "test", condition = { env_not_set = ["__MAKE_TEST_VERSION_TASK__"] } }
     __PREV_RELEASE_TESTING__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/.release-tested", condition = { env_not_set = [
         "__PREV_RELEASE_TESTING__",
     ] } }
@@ -33,8 +33,8 @@ end
     script_runner = "@duckscript"
 
 [tasks.test-versions]
+    condition = { env_set = ["__MAKE_TEST_VERSION_TASK__"] }
     cwd = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
-    condition = { env_set = [ "__MAKE_TEST_VERSION_TASK__" ] }
     description = "Testing supported Rust versions"
     script = '''
 !include_files build-tools/makefile.ds
@@ -66,12 +66,13 @@ writefile ${__PREV_RELEASE_TESTING__} ${commit.stdout}
 
 [tasks.test-combinations]
     category = "Test"
-	condition = { env_set = [ "__MAKE_TEST_FEATURES__" ] }
+    condition = { env_set = ["__MAKE_TEST_FEATURES__"] }
     description = "Test all possible combinations of features"
     script = '''
 !include_files build-tools/makefile.ds
 
-feature_sets = generate_power_set ${__MAKE_TEST_FEATURES__}
+features = array %{__MAKE_TEST_FEATURES__}
+feature_sets = generate_power_set ${features}
 
 for fs in ${feature_sets}
     fs = array_join ${fs} ","
