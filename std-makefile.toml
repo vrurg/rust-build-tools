@@ -3,14 +3,20 @@
         "__MAKE_CHANGELOG__",
     ] } }
     __MAKE_DEFAULT_TOOLCHAIN__ = { value = "nightly", condition = { env_not_set = ["__MAKE_DEFAULT_TOOLCHAIN__"] } }
+    # Template file for the readme.
     __MAKE_README_TPL__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/build-tools/README.tpl", condition = { env_not_set = [
         "__MAKE_README_TPL__",
     ] } }
     __MAKE_README__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/README.md", condition = { env_not_set = [
         "__MAKE_README__",
     ] } }
+    # Features that are to be used with all tests.
+    __MAKE_TEST_FIXED_FEATURES__ = { value = "", condition = { env_not_set = ["__MAKE_TEST_FIXED_FEATURES__"] } }
+    # List of test tasks to be run by default.
     __MAKE_TEST_TASKS__ = { value = "test-default", condition = { env_not_set = ["__MAKE_TEST_TASKS__"] } }
+    # Task that must run tests for different Rust versions.
     __MAKE_TEST_VERSION_TASK__ = { value = "test", condition = { env_not_set = ["__MAKE_TEST_VERSION_TASK__"] } }
+    # File where the last commit that was tested for release is stored.
     __PREV_RELEASE_TESTING__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/.release-tested", condition = { env_not_set = [
         "__PREV_RELEASE_TESTING__",
     ] } }
@@ -58,7 +64,7 @@ writefile ${__PREV_RELEASE_TESTING__} ${commit.stdout}
     script_runner = "@duckscript"
 
 [tasks.test-default]
-    args        = ["test", "--workspace"]
+    args        = ["test", "--workspace", "--features", "${__MAKE_TEST_FIXED_FEATURES__}"]
     category    = "Test"
     command     = "cargo"
     description = "Test with only the default features"
@@ -85,11 +91,33 @@ end
     toolchain = "${__MAKE_DEFAULT_TOOLCHAIN__}"
 
 [tasks.test-features]
-    args        = ["test", "--features", "${__MAKE_FEATURE_SET__}"]
+    args        = ["test", "--features", "${__MAKE_FEATURE_SET__}", "--features", "${__MAKE_TEST_FIXED_FEATURES__}"]
     category    = "Test"
     command     = "cargo"
     description = "Test with '${__MAKE_FEATURE_SET__}' features"
     toolchain   = "${__MAKE_DEFAULT_TOOLCHAIN__}"
+
+[tasks.test-docs-rs]
+    script = '''
+if is_empty "${__MAKE_DOCS_RS_PACKAGES__}"
+    cm_run_task test-docs-rs-package
+else
+    packages = array %{__MAKE_DOCS_RS_PACKAGES__}
+    for package in ${packages}
+        echo "Testing package '${package}' for docs.rs"
+        set_env __MAKE_DOCS_RS_ARGS__ "-p${package}"
+        cm_run_task test-docs-rs-package
+    end
+end
+'''
+    script_runner = "@duckscript"
+
+[tasks.test-docs-rs-package]
+    args      = ["docs-rs", "@@split(__MAKE_DOCS_RS_ARGS__, )"]
+    category  = "Test"
+    command   = "cargo"
+    env       = { RUSTDOCFLAGS = "-Dwarnings" }
+    toolchain = "nightly"
 
 [tasks.depends]
     description = "Install necessary dependencies and tools"
