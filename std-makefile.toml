@@ -171,11 +171,10 @@ reply = lowercase ${reply}
 if eq ${reply} "y"
     context_file = set ".git-cliff-context.json"
     context = exec --fail-on-error git cliff --context
-    echo ${context.stdout}
     writefile ${context_file} ${context.stdout}
     exec --fail-on-error "${EDITOR}" ${context_file}
-    # exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version} --from-context ${context_file}
-    # rm ${context_file}
+    exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version} --from-context ${context_file}
+    rm ${context_file}
 else
     echo "git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}"
     exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}
