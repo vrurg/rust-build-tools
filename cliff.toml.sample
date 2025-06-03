@@ -12,6 +12,11 @@
 {% else %}\
     ## [unreleased]
 {% endif %}\
+{% if message %}
+### Release Notes
+
+{{message}}
+{% endif %}\
 {% for group, commits in commits | group_by(attribute="group") %}
     ### {{ group | striptags | trim | upper_first }}
     {% for commit in commits %}
@@ -19,7 +24,8 @@
             {% if commit.breaking %}[**breaking**] {% endif %}\
             {{ commit.message | upper_first }}\
             {% for footer in commit.footers %}\
-                {% if footer.token | lower == "annotate" %}
+                {% set footer_token = footer.token | lower %}\
+                {% if footer_token == "annotate" or footer_token == "annotation" %}\n
 
                     {{ footer.value | indent(prefix="    ", first=true) }}
                 {% endif %}\
