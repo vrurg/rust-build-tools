@@ -10,6 +10,8 @@
     __MAKE_README__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/README.md", condition = { env_not_set = [
         "__MAKE_README__",
     ] } }
+    # If this file is found then use it to generate CHANGELOG.md "Release Notes" section.
+    __MAKE_RELEASE_NOTES__ = { value = ".release-notes.md", condition = { env_not_set = ["__MAKE_RELEASE_NOTES__"] } }
     # Features that are to be used with all tests.
     __MAKE_TEST_FIXED_FEATURES__ = { value = "", condition = { env_not_set = ["__MAKE_TEST_FIXED_FEATURES__"] } }
     # List of test tasks to be run by default.
@@ -165,19 +167,10 @@ if is_empty ${version}
     assert_error "Can't find out ${__MAKE_README_CRATE_ROOT__} version.${stderr}"
 end
 
-reply = ask_user "Do you want to edit git cliff context for CHANGELOG?"
-reply = lowercase ${reply}
-
-if eq ${reply} "y"
-    context_file = set ".git-cliff-context.json"
-    context = exec --fail-on-error git cliff --context
-    writefile ${context_file} ${context.stdout}
-    exec --fail-on-error "${EDITOR}" ${context_file}
-    exec stty sane
-    exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version} --from-context ${context_file}
-    rm ${context_file}
+if is_path_exists ${__MAKE_RELEASE_NOTES__}
+    release_notes = readfile ${__MAKE_RELEASE_NOTES__}
+    exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version} --with-tag-message "${release_notes}"
 else
-    echo "git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}"
     exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version}
 end
 """
@@ -281,6 +274,11 @@ if eq ${reply} "y"
         exec --fail-on-error cargo release --config ${__RELEASE_TOML__} --no-confirm
     else
         exec --fail-on-error cargo release --config ${__RELEASE_TOML__} -x --no-confirm
+    end
+
+    # Only now when we finished publishing we can remove the release notes file
+    if is_path_exists ${__MAKE_RELEASE_NOTES__}
+        rm ${__MAKE_RELEASE_NOTES__}
     end
 else
     echo "Won't publish."
