@@ -173,6 +173,7 @@ if eq ${reply} "y"
     context = exec --fail-on-error git cliff --context
     writefile ${context_file} ${context.stdout}
     exec --fail-on-error "${EDITOR}" ${context_file}
+    exec stty sane
     exec --fail-on-error git cliff -o ${__MAKE_CHANGELOG__} --tag ${version} --from-context ${context_file}
     rm ${context_file}
 else
