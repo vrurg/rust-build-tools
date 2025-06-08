@@ -249,7 +249,7 @@ end
     script_runner = "@duckscript"
 
 [tasks.beta]
-    args        = ["release", "version", "beta", "--config", "${__RELEASE_TOML__}", "--execute"]
+    args        = ["release", "beta", "--config", "${__RELEASE_TOML__}", "--execute"]
     command     = "cargo"
     description = "Produce beta version"
 
