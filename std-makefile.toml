@@ -22,9 +22,6 @@
     __PREV_RELEASE_TESTING__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/.release-tested", condition = { env_not_set = [
         "__PREV_RELEASE_TESTING__",
     ] } }
-    __RELEASE_TOML__ = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/build-tools/release.toml", condition = { env_not_set = [
-        "__RELEASE_TOML__",
-    ] } }
 
 [env.dry_run]
     DRY_RUN = { value = "true", condition = { env_not_set = ["DRY_RUN"] } }
@@ -224,12 +221,12 @@ reply = ask_user "Do you want to bump release version patch?"
 reply = lowercase ${reply}
 
 if eq ${reply} "y"
-    exec --fail-on-error cargo release version patch --config ${__RELEASE_TOML__}
+    exec --fail-on-error cargo release version patch 
     reply = ask_user "Does this look good for you?"
     reply = lowercase ${reply}
     if eq ${reply} "y"
         echo "Bumping the patch."
-        exec --fail-on-error cargo release version patch --config ${__RELEASE_TOML__} --execute --no-confirm
+        exec --fail-on-error cargo release version patch --execute --no-confirm
         exec --fail-on-error git add Cargo.* */Cargo.toml
         exec --fail-on-error git commit -m "minor: version bump"
     end
@@ -252,7 +249,7 @@ end
     script_runner = "@duckscript"
 
 [tasks.beta]
-    args        = ["release", "beta", "--config", "${__RELEASE_TOML__}", "--execute"]
+    args        = ["release", "beta", "--execute"]
     command     = "cargo"
     description = "Produce beta version"
 
@@ -274,9 +271,9 @@ reply = lowercase ${reply}
 
 if eq ${reply} "y"
     if ${DRY_RUN}
-        exec --fail-on-error cargo release --config ${__RELEASE_TOML__} --no-confirm
+        exec --fail-on-error cargo release --no-confirm
     else
-        exec --fail-on-error cargo release --config ${__RELEASE_TOML__} -x --no-confirm
+        exec --fail-on-error cargo release -x --no-confirm
     end
 
     # Only now when we finished publishing we can remove the release notes file
