@@ -26,6 +26,9 @@
         "__RELEASE_TOML__",
     ] } }
 
+[env.dry_run]
+    DRY_RUN = { value = "true", condition = { env_not_set = ["DRY_RUN"] } }
+
 [tasks.test]
     category = "Test"
     clear = true
